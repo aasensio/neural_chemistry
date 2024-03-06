@@ -3,6 +3,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.utils.data
+import sys
+sys.path.append('modules')
 import encoding
 import mlp
 import normalization
@@ -10,12 +12,13 @@ from tqdm import tqdm
 
     
 class ChemistryEmulator(object):
-    def __init__(self, gpu, batch_size, verbose=False):
+    def __init__(self, gpu, verbose=False):
 
         self.verbose = verbose
 
         if self.verbose:
             print(f"Loading model weights")
+
         chk = torch.load('weights.pth', map_location=lambda storage, loc: storage)
 
         self.n_mols = 192
@@ -116,8 +119,9 @@ class ChemistryEmulator(object):
         if self.verbose:
             print("Working on parameters...")
         self.pars = np.vstack([np.log10(nh), T, np.log10(crir), np.log10(sulfur), np.log10(uv_flux)]).T
-        self.pars, _, _ = normalization.normalize(self.pars, xmin=self.normalization['pars'][0], xmax=self.normalization['pars'][1], axis=0)
+        self.pars, _, _ = normalization.normalize(self.pars, xmin=self.normalization['pars'][0], xmax=self.normalization['pars'][1], axis=0)        
         self.pars = np.tile(self.pars[:, None, :], (1, self.n_mols, 1))
+
                     
         self.batch_size = batch_size
         
@@ -167,7 +171,7 @@ class ChemistryEmulator(object):
         logab_max = self.normalization['abund_min_max'][1]
         
         # Undo the normalization
-        out_all = 0.5 * (out_all + 1.0) * (logab_max[None, :, :] - logab_min[None, :, :]) + logab_min[None, :, :]
+        out_all = normalization.denormalize(out_all, logab_min[None, :, :], logab_max[None, :, :])
 
         # Undo the log
         out_all = 10.0**out_all - 1e-45
