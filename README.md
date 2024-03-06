@@ -77,8 +77,8 @@ We choose 64 models with random properties inside the range of validity. Select 
 
 ## Weights
 
-You can download the weights of the model from
+You can download the weights of the model and the training/validation data from
 
-    https://cloud.iac.es/index.php/s/WajHzHPWbwLRLTq
+    https://cloud.iac.es/index.php/s/eZAT4ocJFkPyn3R
 
-Put them in the working directory and run the code.
+Put the weight files in the working directory and run the code.
