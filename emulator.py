@@ -9,6 +9,7 @@ import encoding
 import mlp
 import normalization
 from tqdm import tqdm
+import scipy.interpolate as interp
 
     
 class ChemistryEmulator(object):
@@ -163,15 +164,23 @@ class ChemistryEmulator(object):
                 logt_encoded = self.encoding(logt[:, None], alpha=1.0)
                 
                 # MLP
-                out = self.model(logt_encoded[None, None, :, :], beta=beta[:, :, None, :], gamma=gamma[:, :, None, :]).squeeze()
+                out = self.model(logt_encoded[None, None, :, :], beta=beta[:, :, None, :], gamma=gamma[:, :, None, :]).squeeze(-1)
                 
                 out_all[ind[i], :, :] = out.cpu().numpy()
 
+        # Abundance normalization was obtained for 64 time steps. Resample to the desired time steps
         logab_min = self.normalization['abund_min_max'][0]
         logab_max = self.normalization['abund_min_max'][1]
+
+        logt_ref = np.linspace(-1, 1, 64)
+        logab_min_interp = interp.interp1d(logt_ref, logab_min, axis=1, kind='linear', bounds_error=False, fill_value=(np.nan, np.nan))
+        logab_max_interp = interp.interp1d(logt_ref, logab_max, axis=1, kind='linear', bounds_error=False, fill_value=(np.nan, np.nan))
+
+        logab_min_new = logab_min_interp(self.logt)
+        logab_max_new = logab_max_interp(self.logt)
         
         # Undo the normalization
-        out_all = normalization.denormalize(out_all, logab_min[None, :, :], logab_max[None, :, :])
+        out_all = normalization.denormalize(out_all, logab_min_new[None, :, :], logab_max_new[None, :, :])
 
         # Undo the log
         out_all = 10.0**out_all - 1e-45
