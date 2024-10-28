@@ -71,9 +71,11 @@ An example of how to run the code is shown in `example.py`, that we reproduce he
     t = np.logspace(0, 7, 64)
 
     net = emulator.ChemistryEmulator(gpu=0, batch_size=32)
-    abundance = net.evaluate(t, T, nh, crir, sulfur, uv_flux, batch_size=32)
+    abundance = net.evaluate(t, T, nh, crir, sulfur, uv_flux, batch_size=32, species=None)
 
-We choose 64 models with random properties inside the range of validity. Select the output times and call the emulator. The `batch_size` defines the number of models that will be computed in parallel. This depends on the amount of memory you have but it can be a large number.
+We choose 64 models with random properties inside the range of validity. Select the output times and call the emulator. The `batch_size` defines the number of models that will be computed in parallel. This depends on the amount of memory you have but it can be a large number. The keyword `species` indicates a list of the indices of which species you
+want to compute, from the list of 192 species that can be found in `list_molecules.txt`. If abstent or
+set to `None`, all species are computed.
 
 ## Weights
 

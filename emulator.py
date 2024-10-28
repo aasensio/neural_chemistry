@@ -85,11 +85,16 @@ class ChemistryEmulator(object):
         self.condition_pars.eval()
         self.condition_mol.eval()        
 
-    def evaluate(self, t, T, nh, crir, sulfur, uv_flux, batch_size=32):
+    def evaluate(self, t, T, nh, crir, sulfur, uv_flux, batch_size=32, species=None):
         self.n_models = len(T)
 
         # Generate the indices for all molecules and expand to the number of physical conditions that we want
-        mol_idx = np.arange(self.n_mols)
+        if species is None:
+            mol_idx = np.arange(self.n_mols)
+            self.n_mols_compute = self.n_mols
+        else:
+            mol_idx = np.array(species)
+            self.n_mols_compute = len(mol_idx)
         self.mol_idx = np.tile(mol_idx, (self.n_models, 1))
 
         # Define the time axis and check that it lies in the correct range
@@ -121,7 +126,7 @@ class ChemistryEmulator(object):
             print("Working on parameters...")
         self.pars = np.vstack([np.log10(nh), T, np.log10(crir), np.log10(sulfur), np.log10(uv_flux)]).T
         self.pars, _, _ = normalization.normalize(self.pars, xmin=self.normalization['pars'][0], xmax=self.normalization['pars'][1], axis=0)        
-        self.pars = np.tile(self.pars[:, None, :], (1, self.n_mols, 1))
+        self.pars = np.tile(self.pars[:, None, :], (1, self.n_mols_compute, 1))
 
                     
         self.batch_size = batch_size
@@ -144,7 +149,7 @@ class ChemistryEmulator(object):
         else:
             ind = [ind]
 
-        out_all = np.zeros((n, self.n_mols, len(logt)), dtype='float32')
+        out_all = np.zeros((n, self.n_mols_compute, len(logt)), dtype='float32')
         
         with torch.no_grad():
 
@@ -180,7 +185,7 @@ class ChemistryEmulator(object):
         logab_max_new = logab_max_interp(self.logt)
         
         # Undo the normalization
-        out_all = normalization.denormalize(out_all, logab_min_new[None, :, :], logab_max_new[None, :, :])
+        out_all = normalization.denormalize(out_all, logab_min_new[None, mol_idx, :], logab_max_new[None, mol_idx, :])
 
         # Undo the log
         out_all = 10.0**out_all - 1e-45
