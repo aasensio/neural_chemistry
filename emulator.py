@@ -150,10 +150,15 @@ class ChemistryEmulator(object):
             ind = [ind]
 
         out_all = np.zeros((n, self.n_mols_compute, len(logt)), dtype='float32')
+
+        if self.verbose:
+            disable_tqdm = False
+        else:
+            disable_tqdm = True
         
         with torch.no_grad():
 
-            for i in tqdm(range(len(ind))):
+            for i in tqdm(range(len(ind)), disable=disable_tqdm):
 
                 # Transform molecule to one-hot encoding
                 mol_1hot = F.one_hot(mol[ind[i], :], num_classes=self.n_mols).float()
@@ -169,7 +174,7 @@ class ChemistryEmulator(object):
                 logt_encoded = self.encoding(logt[:, None], alpha=1.0)
                 
                 # MLP
-                out = self.model(logt_encoded[None, None, :, :], beta=beta[:, :, None, :], gamma=gamma[:, :, None, :]).squeeze(-1)
+                out = self.model(logt_encoded[None, None, :, :], beta=beta[:, :, None, :], gamma=gamma[:, :, None, :]).squeeze(-1)                
                 
                 out_all[ind[i], :, :] = out.cpu().numpy()
 
@@ -177,6 +182,8 @@ class ChemistryEmulator(object):
         logab_min = self.normalization['abund_min_max'][0]
         logab_max = self.normalization['abund_min_max'][1]
 
+        # breakpoint()
+        
         logt_ref = np.linspace(-1, 1, 64)
         logab_min_interp = interp.interp1d(logt_ref, logab_min, axis=1, kind='linear', bounds_error=False, fill_value=(np.nan, np.nan))
         logab_max_interp = interp.interp1d(logt_ref, logab_max, axis=1, kind='linear', bounds_error=False, fill_value=(np.nan, np.nan))
