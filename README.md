@@ -1,7 +1,18 @@
 # Neural emulator for interstellar chemistry
 
-This repository contains the code for using a conditional neural field
-as an emulator for instellar chemistry.
+Astrochemical models are important tools to interpret observations of molecular and atomic species in different 
+environments. However, these models are time-consuming, precluding a thorough exploration of the parameter space, 
+leading to uncertainties and biased results. Using neural networks to simulate the behaviour of astrochemical models 
+is a way to circumvent this problem, providing fast calculations that are based on real astrochemical models. We 
+present a fast neural emulator of the astrochemical code Nautilus based on conditional neural fields. The resulting 
+model produces the abundance of 192 species for arbitrary times between 1 and 107 yr. Uncertainties well below 0.2 dex 
+are found for all species, while the computing time is of the order of 10000 times smaller than Nautilus. This 
+opens up the possibility of performing much more complex forward models to better understand the physical properties of the 
+interstellar medium. 
+
+This repository contains the code for using the conditional neural field
+as an emulator for instellar chemistry (see [Asensio Ramos et al. 2024](https://ui.adsabs.harvard.edu/abs/2024MNRAS.531.4930A/abstract).
+We note that all calculations are done for a visual extinction of 5.
 
 ## Installation
 
