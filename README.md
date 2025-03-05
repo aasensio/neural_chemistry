@@ -92,6 +92,6 @@ set to `None`, all species are computed.
 
 You can download the weights of the model and the training/validation data from
     
-    https://cloud.iac.es/index.php/s/WajHzHPWbwLRLTq
+    https://cloud.iac.es/index.php/s/W8Qgw8Yy95BqstR
 
 Put the weight files in the working directory and run the code.
