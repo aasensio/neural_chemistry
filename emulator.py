@@ -20,9 +20,9 @@ class ChemistryEmulator(object):
         if self.verbose:
             print(f"Loading model weights")
 
-        chk = torch.load('weights.pth', map_location=lambda storage, loc: storage)
+        chk = torch.load('weights.pth', map_location=lambda storage, loc: storage, weights_only=False)
 
-        self.n_mols = 192
+        self.n_mols = 250
 
         # Load the hyperparameters from the checkpoint        
         self.hyperparameters = chk['hyperparameters']
@@ -50,7 +50,7 @@ class ChemistryEmulator(object):
                                 n_hidden=self.hyperparameters['mlp']['num_layers_mlp'],
                                 activation=nn.ReLU()).to(self.device)
                 
-        self.condition_pars = mlp.MLPConditioning(n_input=5,
+        self.condition_pars = mlp.MLPConditioning(n_input=6,
                                                 n_output=self.hyperparameters['mlp']['n_hidden_mlp'] // 2,
                                                   dim_hidden=self.hyperparameters['condition_pars']['n_hidden'],
                                                   n_hidden=self.hyperparameters['condition_pars']['num_layers'],
@@ -85,7 +85,7 @@ class ChemistryEmulator(object):
         self.condition_pars.eval()
         self.condition_mol.eval()        
 
-    def evaluate(self, t, T, nh, crir, sulfur, uv_flux, batch_size=32, species=None):
+    def evaluate(self, t, T, nh, crir, sulfur, uv_flux, Av, batch_size=32, species=None):
         self.n_models = len(T)
 
         # Generate the indices for all molecules and expand to the number of physical conditions that we want
@@ -121,10 +121,13 @@ class ChemistryEmulator(object):
         good_uv = ((uv_flux >= 0.1) & (uv_flux <= 1e4)).all()
         if not good_uv:
             raise ValueError("uv_flux is not in the correct range [0.1,1e4]")
+        good_Av = ((Av >= 0.0) & (Av <= 18.0)).all()
+        if not good_uv:
+            raise ValueError("Av is not in the correct range [0,18] mag")
         
         if self.verbose:
             print("Working on parameters...")
-        self.pars = np.vstack([np.log10(nh), T, np.log10(crir), np.log10(sulfur), np.log10(uv_flux)]).T
+        self.pars = np.vstack([np.log10(nh), T, np.log10(crir), np.log10(sulfur), np.log10(uv_flux), Av]).T
         self.pars, _, _ = normalization.normalize(self.pars, xmin=self.normalization['pars'][0], xmax=self.normalization['pars'][1], axis=0)        
         self.pars = np.tile(self.pars[:, None, :], (1, self.n_mols_compute, 1))
 

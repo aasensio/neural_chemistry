@@ -13,6 +13,7 @@ if (__name__ == '__main__'):
     crir = 10.0**np.random.uniform(np.log10(1e-17), np.log10(1e-15), size=n_models)
     sulfur = 10.0**np.random.uniform(np.log10(7.5e-8), np.log10(1.5e-5), size=n_models)
     uv_flux = 10.0**np.random.uniform(np.log10(0.1), np.log10(1e4), size=n_models)
+    Av = np.random.uniform(0.0, 18.0, size=n_models)
     
     # t = np.logspace(0, 7, 120)
 
@@ -27,4 +28,5 @@ if (__name__ == '__main__'):
     CRIR = np.array([6.7e-17, 6.7e-17])
     S = np.array([1.02e-7, 1.02e-7])
     fUV = np.array([248.4, 248.4])
-    ab = net.evaluate(age, Tgas, nH, CRIR, S, fUV, batch_size=1)
+    Av = np.array([5.0, 5.0])
+    ab = net.evaluate(age, Tgas, nH, CRIR, S, fUV, Av, batch_size=1)
