@@ -48,19 +48,19 @@ class ChemistryEmulator(object):
                                 n_output=1,
                                 dim_hidden=self.hyperparameters['mlp']['n_hidden_mlp'],                                 
                                 n_hidden=self.hyperparameters['mlp']['num_layers_mlp'],
-                                activation=nn.ReLU()).to(self.device)
+                                activation=nn.GELU(approximate='tanh')).to(self.device)
                 
         self.condition_pars = mlp.MLPConditioning(n_input=6,
                                                 n_output=self.hyperparameters['mlp']['n_hidden_mlp'] // 2,
                                                   dim_hidden=self.hyperparameters['condition_pars']['n_hidden'],
                                                   n_hidden=self.hyperparameters['condition_pars']['num_layers'],
-                                                  activation=nn.ReLU()).to(self.device)
+                                                  activation=nn.GELU(approximate='tanh')).to(self.device)
         
         self.condition_mol = mlp.MLPConditioning(n_input=self.n_mols,
                                                 n_output=self.hyperparameters['mlp']['n_hidden_mlp'] // 2,
                                                   dim_hidden=self.hyperparameters['condition_mol']['n_hidden'],
                                                   n_hidden=self.hyperparameters['condition_mol']['num_layers'],
-                                                  activation=nn.ReLU()).to(self.device)
+                                                  activation=nn.GELU(approximate='tanh')).to(self.device)
                 
         if self.verbose:
             print('N. total parameters MLP :            {0}'.format(sum(p.numel() for p in self.model.parameters() if p.requires_grad)))
@@ -122,7 +122,7 @@ class ChemistryEmulator(object):
         if not good_uv:
             raise ValueError("uv_flux is not in the correct range [0.1,1e4]")
         good_Av = ((Av >= 0.0) & (Av <= 18.0)).all()
-        if not good_uv:
+        if not good_Av:
             raise ValueError("Av is not in the correct range [0,18] mag")
         
         if self.verbose:
