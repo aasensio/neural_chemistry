@@ -1,17 +1,7 @@
 # Neural emulator for interstellar chemistry
 
-Astrochemical models are important tools to interpret observations of molecular and atomic species in different 
-environments. However, these models are time-consuming, precluding a thorough exploration of the parameter space, 
-leading to uncertainties and biased results. Using neural networks to simulate the behaviour of astrochemical models 
-is a way to circumvent this problem, providing fast calculations that are based on real astrochemical models. We 
-present a fast neural emulator of the astrochemical code Nautilus based on conditional neural fields. The resulting 
-model produces the abundance of 250 species for arbitrary times between 1 and 10 million yr. Uncertainties well below 0.2 dex 
-are found for all species, while the computing time is of the order of 10000 times smaller than Nautilus. This 
-opens up the possibility of performing much more complex forward models to better understand the physical properties of the 
-interstellar medium. 
-
-This repository contains the code for using the conditional neural field
-as an emulator for instellar chemistry (see [Asensio Ramos et al. 2024](https://ui.adsabs.harvard.edu/abs/2024MNRAS.531.4930A/abstract).
+This repository contains the code for using a conditional neural field
+as an emulator for instellar chemistry.
 
 ## Installation
 
@@ -77,21 +67,20 @@ An example of how to run the code is shown in `example.py`, that we reproduce he
     crir = 10.0**np.random.uniform(np.log10(1e-17), np.log10(1e-15), size=n_models)
     sulfur = 10.0**np.random.uniform(np.log10(1.5e-5), np.log10(7.5e-8), size=n_models)
     uv_flux = 10.0**np.random.uniform(np.log10(0.1), np.log10(1e4), size=n_models)
-    Av = np.random.uniform(0.0, 18.0, size=n_models)
     
     t = np.logspace(0, 7, 64)
 
     net = emulator.ChemistryEmulator(gpu=0, batch_size=32)
-    abundance = net.evaluate(t, T, nh, crir, sulfur, uv_flux, Av, batch_size=32, species=None)
+    abundance = net.evaluate(t, T, nh, crir, sulfur, uv_flux, batch_size=32, species=None)
 
 We choose 64 models with random properties inside the range of validity. Select the output times and call the emulator. The `batch_size` defines the number of models that will be computed in parallel. This depends on the amount of memory you have but it can be a large number. The keyword `species` indicates a list of the indices of which species you
-want to compute, from the list of 250 species that can be found in `list_molecules_20ene24.txt`. If abstent or
+want to compute, from the list of 192 species that can be found in `list_molecules.txt`. If abstent or
 set to `None`, all species are computed.
 
 ## Weights
 
 You can download the weights of the model and the training/validation data from
-    
-    https://cloud.iac.es/index.php/s/W8Qgw8Yy95BqstR
+
+    https://cloud.iac.es/index.php/s/eZAT4ocJFkPyn3R
 
 Put the weight files in the working directory and run the code.

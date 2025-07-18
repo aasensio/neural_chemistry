@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.init as init
 import numpy as np
-from encoding import GaussianEncoding, PositionalEncoding
 
 def init_kaiming(m):
     if type(m) == nn.Linear:
@@ -134,6 +133,7 @@ class MLP(nn.Module):
 if (__name__ == '__main__'):
 
     import matplotlib.pyplot as pl
+    from .encoding import GaussianEncoding, PositionalEncoding
     which_case = '2D'
     enconding_type = 'gaussian'
 

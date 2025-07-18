@@ -1,13 +1,13 @@
+import os
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.utils.data
-import sys
-sys.path.append('modules')
-import encoding
-import mlp
-import normalization
+from .encoding import GaussianEncoding 
+from .mlp import MLP, MLPConditioning
+from .normalization import normalize, denormalize
+from .io import ensure_files_exist
 from tqdm import tqdm
 import scipy.interpolate as interp
 
@@ -17,12 +17,25 @@ class ChemistryEmulator(object):
 
         self.verbose = verbose
 
+        REQUIRED_FILES = [
+            {
+                'name': 'weights.pth',
+                'url': 'https://cloud.iac.es/index.php/s/W8Qgw8Yy95BqstR/download',
+            }
+        ]
+
+        DOWNLOAD_DIRECTORY = os.path.join(os.path.expanduser('~'), "neural_chemistry")
+
+        ensure_files_exist(REQUIRED_FILES, DOWNLOAD_DIRECTORY)
+
         if self.verbose:
             print(f"Loading model weights")
+        
+        filename = os.path.join(os.path.expanduser('~'), "neural_chemistry/weights.pth")        
 
-        chk = torch.load('weights.pth', map_location=lambda storage, loc: storage, weights_only=False)
+        chk = torch.load(filename, map_location=lambda storage, loc: storage, weights_only=False)
 
-        self.n_mols = 250
+        self.n_mols = 192
 
         # Load the hyperparameters from the checkpoint        
         self.hyperparameters = chk['hyperparameters']
@@ -40,27 +53,27 @@ class ChemistryEmulator(object):
         self.device = torch.device(f"cuda:{self.gpu}" if self.cuda else "cpu")
                                 
         # Define the model
-        self.encoding = encoding.GaussianEncoding(input_size=1,
+        self.encoding = GaussianEncoding(input_size=1,
                                                  sigma=self.hyperparameters['embedding']['sigma'],
                                                  encoding_size=self.hyperparameters['embedding']['encoding_size']).to(self.device)
         
-        self.model = mlp.MLP(n_input=self.encoding.encoding_size,
+        self.model = MLP(n_input=self.encoding.encoding_size,
                                 n_output=1,
                                 dim_hidden=self.hyperparameters['mlp']['n_hidden_mlp'],                                 
                                 n_hidden=self.hyperparameters['mlp']['num_layers_mlp'],
-                                activation=nn.GELU(approximate='tanh')).to(self.device)
+                                activation=nn.ReLU()).to(self.device)
                 
-        self.condition_pars = mlp.MLPConditioning(n_input=6,
+        self.condition_pars = MLPConditioning(n_input=5,
                                                 n_output=self.hyperparameters['mlp']['n_hidden_mlp'] // 2,
                                                   dim_hidden=self.hyperparameters['condition_pars']['n_hidden'],
                                                   n_hidden=self.hyperparameters['condition_pars']['num_layers'],
-                                                  activation=nn.GELU(approximate='tanh')).to(self.device)
+                                                  activation=nn.ReLU()).to(self.device)
         
-        self.condition_mol = mlp.MLPConditioning(n_input=self.n_mols,
+        self.condition_mol = MLPConditioning(n_input=self.n_mols,
                                                 n_output=self.hyperparameters['mlp']['n_hidden_mlp'] // 2,
                                                   dim_hidden=self.hyperparameters['condition_mol']['n_hidden'],
                                                   n_hidden=self.hyperparameters['condition_mol']['num_layers'],
-                                                  activation=nn.GELU(approximate='tanh')).to(self.device)
+                                                  activation=nn.ReLU()).to(self.device)
                 
         if self.verbose:
             print('N. total parameters MLP :            {0}'.format(sum(p.numel() for p in self.model.parameters() if p.requires_grad)))
@@ -85,7 +98,7 @@ class ChemistryEmulator(object):
         self.condition_pars.eval()
         self.condition_mol.eval()        
 
-    def evaluate(self, t, T, nh, crir, sulfur, uv_flux, Av, batch_size=32, species=None):
+    def evaluate(self, t, T, nh, crir, sulfur, uv_flux, batch_size=32, species=None):
         self.n_models = len(T)
 
         # Generate the indices for all molecules and expand to the number of physical conditions that we want
@@ -101,7 +114,7 @@ class ChemistryEmulator(object):
         good_times = ((t >= 1.0) & (t <= 1e7)).all()
         if good_times:
             self.logt = np.log10(t)        
-            self.logt, _, _ = normalization.normalize(self.logt, xmin=self.normalization['logt'][0], xmax=self.normalization['logt'][1], axis=0)                
+            self.logt, _, _ = normalize(self.logt, xmin=self.normalization['logt'][0], xmax=self.normalization['logt'][1], axis=0)                
         else:
             raise ValueError("Time axis is not in the correct range [1,1e7] yr")
                 
@@ -121,14 +134,11 @@ class ChemistryEmulator(object):
         good_uv = ((uv_flux >= 0.1) & (uv_flux <= 1e4)).all()
         if not good_uv:
             raise ValueError("uv_flux is not in the correct range [0.1,1e4]")
-        good_Av = ((Av >= 0.0) & (Av <= 18.0)).all()
-        if not good_Av:
-            raise ValueError("Av is not in the correct range [0,18] mag")
         
         if self.verbose:
             print("Working on parameters...")
-        self.pars = np.vstack([np.log10(nh), T, np.log10(crir), np.log10(sulfur), np.log10(uv_flux), Av]).T
-        self.pars, _, _ = normalization.normalize(self.pars, xmin=self.normalization['pars'][0], xmax=self.normalization['pars'][1], axis=0)        
+        self.pars = np.vstack([np.log10(nh), T, np.log10(crir), np.log10(sulfur), np.log10(uv_flux)]).T
+        self.pars, _, _ = normalize(self.pars, xmin=self.normalization['pars'][0], xmax=self.normalization['pars'][1], axis=0)        
         self.pars = np.tile(self.pars[:, None, :], (1, self.n_mols_compute, 1))
 
                     
@@ -153,15 +163,10 @@ class ChemistryEmulator(object):
             ind = [ind]
 
         out_all = np.zeros((n, self.n_mols_compute, len(logt)), dtype='float32')
-
-        if self.verbose:
-            disable_tqdm = False
-        else:
-            disable_tqdm = True
         
         with torch.no_grad():
 
-            for i in tqdm(range(len(ind)), disable=disable_tqdm):
+            for i in tqdm(range(len(ind))):
 
                 # Transform molecule to one-hot encoding
                 mol_1hot = F.one_hot(mol[ind[i], :], num_classes=self.n_mols).float()
@@ -177,7 +182,7 @@ class ChemistryEmulator(object):
                 logt_encoded = self.encoding(logt[:, None], alpha=1.0)
                 
                 # MLP
-                out = self.model(logt_encoded[None, None, :, :], beta=beta[:, :, None, :], gamma=gamma[:, :, None, :]).squeeze(-1)                
+                out = self.model(logt_encoded[None, None, :, :], beta=beta[:, :, None, :], gamma=gamma[:, :, None, :]).squeeze(-1)
                 
                 out_all[ind[i], :, :] = out.cpu().numpy()
 
@@ -185,8 +190,6 @@ class ChemistryEmulator(object):
         logab_min = self.normalization['abund_min_max'][0]
         logab_max = self.normalization['abund_min_max'][1]
 
-        # breakpoint()
-        
         logt_ref = np.linspace(-1, 1, 64)
         logab_min_interp = interp.interp1d(logt_ref, logab_min, axis=1, kind='linear', bounds_error=False, fill_value=(np.nan, np.nan))
         logab_max_interp = interp.interp1d(logt_ref, logab_max, axis=1, kind='linear', bounds_error=False, fill_value=(np.nan, np.nan))
@@ -195,7 +198,7 @@ class ChemistryEmulator(object):
         logab_max_new = logab_max_interp(self.logt)
         
         # Undo the normalization
-        out_all = normalization.denormalize(out_all, logab_min_new[None, mol_idx, :], logab_max_new[None, mol_idx, :])
+        out_all = denormalize(out_all, logab_min_new[None, mol_idx, :], logab_max_new[None, mol_idx, :])
 
         # Undo the log
         out_all = 10.0**out_all - 1e-45
