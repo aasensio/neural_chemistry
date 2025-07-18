@@ -1,6 +1,6 @@
 [project]
 name = "neural-chemistry"
-version = "1.0.0"
+version = "1.0.2"
 description = "Add your description here"
 readme = "README.md"
 authors = [
@@ -11,8 +11,29 @@ dependencies = [
     "numpy",
     "scipy",
     "tqdm",
+    "torch>=2.6.0",
 ]
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.uv.sources]
+torch = [
+  { index = "pytorch-cpu", marker = "sys_platform == 'win32'" },
+  { index = "pytorch-cu126", marker = "sys_platform == 'linux'" },
+]
+torchvision = [
+  { index = "pytorch-cpu", marker = "sys_platform == 'win32'" },
+  { index = "pytorch-cu126", marker = "sys_platform == 'linux'" },
+]
+
+  [[tool.uv.index]]
+  name = "pytorch-cpu"
+  url = "https://download.pytorch.org/whl/cpu"
+  explicit = true
+
+  [[tool.uv.index]]
+  name = "pytorch-cu126"
+  url = "https://download.pytorch.org/whl/cu126"
+  explicit = true

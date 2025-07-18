@@ -1,6 +1,5 @@
 import os
 import requests
-from urllib.parse import urlparse
 
 # Try to import tqdm for a progress bar. If not available, provide a fallback.
 from tqdm import tqdm

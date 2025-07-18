@@ -5,7 +5,14 @@ as an emulator for instellar chemistry.
 
 ## Installation
 
-This repository makes use of PyTorch and other Python packages. You can have them
+It should be enough to do:
+
+    pip install neural_chemistry
+
+and all requirements should be installed.
+
+### Dependencies
+In case it fails, note that this repository makes use of PyTorch and other Python packages. You can have them
 installed in your system, but we recommend to follow these instructions to
 have a working environment with everything needed for running the code.
 
@@ -17,14 +24,14 @@ or
 
     curl -lO https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
 
-Now install Miniconda
+Install Miniconda
 
     chmod +x Miniconda3-latest-Linux-x86_64.sh
     ./Miniconda3-latest-Linux-x86_64.sh
 
 and follow the instructions for selecting the directory.
 
-Now create an environment and install the packages:
+Create an environment and install the packages:
 
     conda create -n chemistry python=3.10
     conda activate chemistry
@@ -54,9 +61,43 @@ or
 
 if using `pip` for the installation of packages.
 
-## Running the code
+To make then a local installation, simply clone the repository and type
 
-An example of how to run the code is shown in `example.py`, that we reproduce here:
+    pip install -e .
+
+## New version
+
+An example of how to run the code is shown in `example2.py`, that we reproduce here:
+
+    # Define the number of random models 
+    
+    n_models = 32
+    batch_size = 32
+
+    mols = [0, 1, 2, 3, 4, 5]
+
+    nh = 10.0**np.random.uniform(np.log10(1e4), np.log10(1e7), size=n_models)
+    T = np.random.uniform(10.0, 80.0, size=n_models)
+    crir = 10.0**np.random.uniform(np.log10(1e-17), np.log10(1e-15), size=n_models)
+    sulfur = 10.0**np.random.uniform(np.log10(7.5e-8), np.log10(1.5e-5), size=n_models)
+    uv_flux = 10.0**np.random.uniform(np.log10(0.1), np.log10(1e4), size=n_models)
+    Av = np.random.uniform(0.0, 18.0, size=n_models)
+    
+    t = np.logspace(0, 7, 120)
+
+    net = neural_chemistry.ChemistryEmulator2(gpu=0, verbose=True)
+    abundance = net.evaluate(t, T, nh, crir, sulfur, uv_flux, Av, batch_size=batch_size, species=None)
+
+    abundance_subset = net.evaluate(t, T, nh, crir, sulfur, uv_flux, Av, batch_size=batch_size, species=[0,1,2,3,4,5])
+
+
+We choose 64 models with random properties inside the range of validity. Select the output times and call the emulator. The `batch_size` defines the number of models that will be computed in parallel. This depends on the amount of memory you have but it can be a large number. The keyword `species` indicates a list of the indices of which species you
+want to compute, from the list of 250 species that can be found in `list_molecules:20ene24.txt`. If abstent or
+set to `None`, all species are computed.
+
+## Old version
+
+An example of how to run the old code is shown in `example.py`, that we reproduce here:
 
     # Define the number of random models 
     n_models = 64
@@ -73,14 +114,6 @@ An example of how to run the code is shown in `example.py`, that we reproduce he
     net = emulator.ChemistryEmulator(gpu=0, batch_size=32)
     abundance = net.evaluate(t, T, nh, crir, sulfur, uv_flux, batch_size=32, species=None)
 
-We choose 64 models with random properties inside the range of validity. Select the output times and call the emulator. The `batch_size` defines the number of models that will be computed in parallel. This depends on the amount of memory you have but it can be a large number. The keyword `species` indicates a list of the indices of which species you
-want to compute, from the list of 192 species that can be found in `list_molecules.txt`. If abstent or
-set to `None`, all species are computed.
-
 ## Weights
 
-You can download the weights of the model and the training/validation data from
-
-    https://cloud.iac.es/index.php/s/eZAT4ocJFkPyn3R
-
-Put the weight files in the working directory and run the code.
+The weights are downloadad automatically the first time any of the emulators is used.
